@@ -141,14 +141,22 @@ def evaluate(model: LogisticRegression, dataloader: data.DataLoader, criterion: 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n_train", type=int, required=True)
-    parser.add_argument("--n_val", type=int, required=True)
-    parser.add_argument("--batch_size", type=int, required=True)
-    parser.add_argument("--epochs", type=int, required=True)
-    parser.add_argument("--lr", type=float, required=True)
-    parser.add_argument("--val_interval", type=int, required=True)
-    parser.add_argument("--log_dir", type=str, required=True)
-    parser.add_argument("--params_path", type=str, required=True)
+    parser.add_argument("--n_train", type=int, required=True,
+                       help="Number of training samples to generate")
+    parser.add_argument("--n_val", type=int, required=True,
+                       help="Number of validation samples to generate") 
+    parser.add_argument("--batch_size", type=int, required=True,
+                       help="Training batch size")
+    parser.add_argument("--epochs", type=int, required=True,
+                       help="Number of epochs to train for")
+    parser.add_argument("--lr", type=float, required=True,
+                       help="Learning rate for optimizer")
+    parser.add_argument("--val_interval", type=int, required=True,
+                       help="Number of steps between validation evaluations")
+    parser.add_argument("--log_dir", type=str, required=True,
+                       help="Directory to save tensorboard logs")
+    parser.add_argument("--params_path", type=str, required=True,
+                       help="Path to save model parameters over time")
     args = parser.parse_args()
 
     # create dataloaders
