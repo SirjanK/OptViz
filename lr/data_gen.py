@@ -52,8 +52,8 @@ def generate_dataset(n_samples: int) -> data.Dataset:
     class_one_labels = torch.ones(n_samples // 2)
 
     # combine data
-    data = torch.cat((class_zero_data, class_one_data), dim=0)
+    features = torch.cat((class_zero_data, class_one_data), dim=0)
     labels = torch.cat((class_zero_labels, class_one_labels), dim=0)
 
     # create dataset
-    return data.TensorDataset(data, labels)
+    return data.TensorDataset(features, labels)

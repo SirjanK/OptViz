@@ -7,11 +7,16 @@ import torch.utils.data as data
 import pandas as pd
 from torch.utils.tensorboard import SummaryWriter
 import os
+import shutil
 
 from model import LogisticRegression
 from data_gen import generate_dataloader
 from typing import Callable, Dict
 import argparse
+
+
+# for determinism
+torch.manual_seed(12)
 
 
 LOSS_KEY = "loss"
@@ -34,8 +39,21 @@ def train(train_dataloader: data.DataLoader, val_dataloader: data.DataLoader, ep
     """
 
     # Create tensorboard writer
+    if os.path.exists(log_dir):
+        shutil.rmtree(log_dir)
     os.makedirs(log_dir, exist_ok=True)
     writer = SummaryWriter(log_dir)
+    
+    # Configure custom colors for better visualization
+    # Train metrics will be orange, validation metrics will be blue
+    writer.add_custom_scalars({
+        'Loss': {
+            'Loss': ['multiline', ['Loss/Train', 'Loss/Validation']]
+        },
+        'Accuracy': {
+            'Accuracy': ['multiline', ['Accuracy/Train', 'Accuracy/Validation']]
+        }
+    })
     
     model = LogisticRegression()
     model.train()
@@ -64,24 +82,24 @@ def train(train_dataloader: data.DataLoader, val_dataloader: data.DataLoader, ep
             train_accuracy = metric_calculators[ACCURACY_KEY](preds, labels)
             
             # Log batch train metrics
-            writer.add_scalar('Train/Batch_Loss', train_loss.item(), global_step)
-            writer.add_scalar('Train/Batch_Accuracy', train_accuracy.item(), global_step)
+            writer.add_scalar('Loss/Train', train_loss.item(), global_step)
+            writer.add_scalar('Accuracy/Train', train_accuracy.item(), global_step)
 
             if batch_idx % val_interval == 0:
                 val_metrics = evaluate(model, val_dataloader, criterion, metric_calculators)
                 
-                # Log validation metrics
-                writer.add_scalar('Validation/Loss', val_metrics[LOSS_KEY], global_step)
-                writer.add_scalar('Validation/Accuracy', val_metrics[ACCURACY_KEY].item(), global_step)
+                # Log validation metrics (will overlay with train metrics)
+                writer.add_scalar('Loss/Validation', val_metrics[LOSS_KEY], global_step)
+                writer.add_scalar('Accuracy/Validation', val_metrics[ACCURACY_KEY].item(), global_step)
                 
                 # Log learning rate
                 writer.add_scalar('Training/Learning_Rate', lr, global_step)
             
-            param_df = param_df.append({
-                "step": global_step,
-                "w1": model.weights[0].item(),
-                "w2": model.weights[1].item(),
-            }, ignore_index=True)
+            param_df.loc[len(param_df)] = [
+                global_step,
+                model.weights[0].item(),
+                model.weights[1].item()
+            ]
 
             global_step += 1
 
@@ -141,7 +159,10 @@ if __name__ == "__main__":
     param_df = train(train_dataloader, val_dataloader, args.epochs, args.lr, args.val_interval, args.log_dir)
 
     # save params to params path
+    if os.path.exists(args.params_path):
+        os.remove(args.params_path)
     os.makedirs(os.path.dirname(args.params_path), exist_ok=True)
+    param_df['step'] = param_df['step'].astype(int)
     param_df.to_csv(args.params_path, index=False)
 
     print(f"Training successful; Saved params to {args.params_path}")
