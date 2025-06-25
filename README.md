@@ -1,7 +1,20 @@
 # OptViz
 Visualization for optimization algorithms.
 
+Ultimate goal (WIP): visualize progression of stochastic optimization algorithms across the loss
+surface. Namely, if we abstractly define $\mathcal{L(\theta)}$ as the loss surface given some parameter
+$\theta$ for a parametrized model, we want to visualize the evolution of $\mathcal{L}$ as $\theta$ is updated
+by say SGD or Adam. One fun visualization we want to target is as if you were an ego actor at each
+iteration time `t` with some view of the loss surface you're exploring, and follow the evolution
+of the loss surface, moving as you go.
+
+To start of with, just work with a simple LR example with two weight parameters (no bias term) on
+2D mock data. Then go for models with more parameters using different projection schemes.
+
 ## Simple Logistic Regression Example
+Current capability: Not the exact viz we want - just an animation of weight parameters over time
+along with decision boundary over time.
+
 We demonstrate viz functionality on a simple logistic regression example.
 
 We generate mock 2D dimensional data with two classes that are nearly linearly
