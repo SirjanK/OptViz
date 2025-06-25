@@ -1,18 +1,19 @@
 # train LR model with SGD
 
+import argparse
+import os
+import shutil
+from typing import Callable, Dict
+
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
-import pandas as pd
 from torch.utils.tensorboard import SummaryWriter
-import os
-import shutil
 
-from model import LogisticRegression
 from data_gen import generate_dataloader
-from typing import Callable, Dict
-import argparse
+from model import LogisticRegression
 
 
 # for determinism
