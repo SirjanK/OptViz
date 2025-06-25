@@ -33,3 +33,7 @@ own purposes if necessary.
 
 To run viz, run the bash script `launch_viz.sh` which has pre-set arguments. This will generate
 an mp4 animation under `lr/assets/animation.mp4`.
+
+Animation:
+
+![LR Animation](lr/assets/animation.mp4)

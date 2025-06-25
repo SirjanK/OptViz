@@ -2,16 +2,17 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, FFMpegWriter
-from lr.data_gen import generate_dataset
+from data_gen import generate_dataset
 import argparse
 import torch
+import os
 
 
 # for determinism
 torch.manual_seed(12)
 
 
-def viz(param_df: pd.DataFrame, n_samples: int, fps: int, save_path: str) -> None:
+def viz(param_df: pd.DataFrame, n_samples: int, fps: int, save_path: str, frame_step: int = 1) -> None:
     """
     Visualize the trajectory of the model parameters over time along with the decision boundary.
 
@@ -19,6 +20,7 @@ def viz(param_df: pd.DataFrame, n_samples: int, fps: int, save_path: str) -> Non
     :param n_samples: Number of samples to generate for viz to contextualize the decision boundary
     :param fps: Frames per second for animation
     :param save_path: Path to save animation
+    :param frame_step: Step size for sampling frames (1 = every frame, 10 = every 10th frame, etc.)
     """
 
     # Configs
@@ -37,11 +39,16 @@ def viz(param_df: pd.DataFrame, n_samples: int, fps: int, save_path: str) -> Non
     ax1.set_xlim(*xlim)
     ax1.set_ylim(*ylim)
     ax1.set_title("w2 vs w1 Trajectory")
+    ax1.set_xlabel("w1")
+    ax1.set_ylabel("w2")
+    ax1.grid(True, alpha=0.3)
     point_plot, = ax1.plot([], [], 'ro', label="Model Parameters")
+    ax1.legend()
 
     # --- Plot 2: Static scatter + moving decision boundary
     # first generate samples
-    X, y = generate_dataset(n_samples)
+    dataset = generate_dataset(n_samples)
+    X, y = dataset.tensors
     # derive xlim and ylim from X
     xlim = (X[:, 0].min(), X[:, 0].max())
     ylim = (X[:, 1].min(), X[:, 1].max())
@@ -51,6 +58,9 @@ def viz(param_df: pd.DataFrame, n_samples: int, fps: int, save_path: str) -> Non
     ax2.set_xlim(*xlim)
     ax2.set_ylim(*ylim)
     ax2.set_title("Decision Boundary Over Time")
+    ax2.set_xlabel("x1")
+    ax2.set_ylabel("x2")
+    ax2.grid(True, alpha=0.3)
 
     # scatter each class with different colors
     X_class_zero = X[y == 0]
@@ -58,6 +68,7 @@ def viz(param_df: pd.DataFrame, n_samples: int, fps: int, save_path: str) -> Non
     ax2.scatter(X_class_zero[:, 0], X_class_zero[:, 1], s=10, alpha=0.5, color='orange', label='Class 0')
     ax2.scatter(X_class_one[:, 0], X_class_one[:, 1], s=10, alpha=0.5, color='purple', label='Class 1')
     line_plot, = ax2.plot([], [], 'b-', lw=2, label="Decision Boundary")
+    ax2.legend()
 
     # X range for decision boundary line
     x_vals = np.linspace(*xlim, 100)
@@ -67,7 +78,7 @@ def viz(param_df: pd.DataFrame, n_samples: int, fps: int, save_path: str) -> Non
         w2 = param_df.at[frame, 'w2']
 
         # Update point plot
-        point_plot.set_data(w1, w2)
+        point_plot.set_data([w1], [w2])
 
         # Update decision boundary: w1*x + w2*y = 0 → y = -w1/w2 * x
         if w2 != 0:
@@ -79,7 +90,9 @@ def viz(param_df: pd.DataFrame, n_samples: int, fps: int, save_path: str) -> Non
         return point_plot, line_plot
 
     # Animation
-    ani = FuncAnimation(fig, update, frames=len(param_df), interval=interval, blit=True)
+    frames = range(0, len(param_df), frame_step)
+    print(f"Creating animation with {len(frames)} frames (sampling every {frame_step}th frame)...")
+    ani = FuncAnimation(fig, update, frames=frames, interval=interval, blit=True)
 
     # Save
     writer = FFMpegWriter(fps=fps, bitrate=1800)
@@ -92,8 +105,14 @@ if __name__ == "__main__":
     parser.add_argument("--save_path", type=str, required=True, help="Path to save animation")
     parser.add_argument("--n_samples", type=int, required=True, help="Number of samples to generate for viz")
     parser.add_argument("--fps", type=int, required=True, help="Frames per second for animation")
+    parser.add_argument("--frame_step", type=int, default=1, help="Step size for sampling frames")
     args = parser.parse_args()
 
     param_df = pd.read_csv(args.params_path)
 
-    viz(param_df, parser.n_samples, fps=parser.fps, save_path=parser.save_path)
+    # remove save_path if it exists
+    if os.path.exists(args.save_path):
+        os.remove(args.save_path)
+    os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
+
+    viz(param_df, args.n_samples, fps=args.fps, save_path=args.save_path, frame_step=args.frame_step)
