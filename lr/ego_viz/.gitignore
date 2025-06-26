@@ -1,0 +1,179 @@
+# Godot-specific ignores
+# =====================
+
+# Ignore everything in godot/.godot/ directory
+godot/.godot/
+
+# Godot 4.x specific
+.godot/
+.import/
+
+# Godot 3.x specific (for compatibility)
+.godot/
+
+# Imported assets (can be re-imported by opening the project)
+*.import
+
+# Configuration files created by Godot
+project.godot
+project.binary
+project.godot.uid
+
+# Build outputs
+build/
+bin/
+lib/
+*.dll
+*.so
+*.dylib
+*.framework/
+*.a
+*.lib
+
+# Godot extension builds
+*.gdextension
+*.gdnlib
+*.gdns
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.code-workspace
+
+# Logs
+*.log
+logs/
+
+# Backup files
+*.bak
+*.backup
+
+# Cache directories
+.cache/
+cache/
+
+# Compiled files
+*.o
+*.obj
+*.exe
+*.out
+*.app
+
+# CMake build files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# SCons build files
+.sconsign.dblite
+.sconsign.dblite-journal
+
+# Python cache (if using Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Node modules (if using npm/yarn)
+node_modules/
+
+# Generated files
+gen/
+generated/
+
+# Test outputs
+test_outputs/
+test_results/
+
+# Documentation builds
+docs/_build/
+docs/build/
+
+# Package files
+*.zip
+*.tar.gz
+*.rar
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Lock files
+*.lock
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Editor-specific files
+*.user
+*.autosave
+
+# Asset pipeline temporary files
+*.import.tmp
+*.import.meta.tmp
+
+# Shader cache
+shader_cache/
+
+# Audio cache
+audio_cache/
+
+# Texture cache
+texture_cache/
+
+# Mesh cache
+mesh_cache/
+
+# Animation cache
+animation_cache/
+
+# Physics cache
+physics_cache/
+
+# Navigation cache
+navigation_cache/
+
+# Rendering cache
+rendering_cache/
+
+# Script cache
+script_cache/
+
+# Resource cache
+resource_cache/
+
+# Editor settings
+editor_settings.tres
+editor_layout.cfg
+
+# User-specific files
+user://
+.godot/user/
+
+# Export templates
+export_templates/
+
+# Addon files
+addons/
+
+# Plugin files
+plugins/ 
