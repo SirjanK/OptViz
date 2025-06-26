@@ -7,11 +7,17 @@
 
 using namespace godot;
 
-void register_ego_viz_types() {
-    ClassDB::register_class<EgoActor>();
+void register_ego_viz_types(ModuleInitializationLevel p_level) {
+    if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+        return;
+    }
+    GDREGISTER_CLASS(EgoActor);
 }
 
-void unregister_ego_viz_types() {
+void unregister_ego_viz_types(ModuleInitializationLevel p_level) {
+    if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+        return;
+    }
     // Nothing to do here
 }
 

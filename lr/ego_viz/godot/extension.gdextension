@@ -1,12 +1,12 @@
 [configuration]
 
-entry_symbol = "gdext_register_types"
+entry_symbol = "ego_viz_library_init"
 compatibility_minimum = "4.1"
 
 [libraries]
 
-macos.debug = "res://libego_viz.macos.template_debug.framework/libego_viz.macos.template_debug"
-macos.release = "res://libego_viz.macos.template_release.framework/libego_viz.macos.template_release"
+macos.debug = "res://libego_viz.framework/libego_viz"
+macos.release = "res://libego_viz.framework/libego_viz"
 linux.debug.x86_64 = "res://libego_viz.linux.template_debug.x86_64.so"
 linux.release.x86_64 = "res://libego_viz.linux.template_release.x86_64.so"
 linux.debug.arm64 = "res://libego_viz.linux.template_debug.arm64.so"

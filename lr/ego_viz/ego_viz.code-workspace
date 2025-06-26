@@ -1,0 +1,31 @@
+{
+    "folders": [
+        {
+            "name": "Ego Viz",
+            "path": "."
+        }
+    ],
+    "settings": {
+        "cmake.configureOnOpen": true,
+        "cmake.buildDirectory": "${workspaceFolder}/build",
+        "files.exclude": {
+            "build": true,
+            "**/CMakeCache.txt": true,
+            "**/CMakeFiles": true
+        },
+        "files.associations": {
+            "*.tscn": "yaml",
+            "*.tres": "yaml",
+            "*.gd": "gdscript"
+        }
+    },
+    "extensions": {
+        "recommendations": [
+            "ms-vscode.cpptools",
+            "ms-vscode.cmake-tools",
+            "ms-vscode.cpptools-extension-pack",
+            "razoric.godot-tools",
+            "neikeq.godot-csharp-vscode"
+        ]
+    }
+} 
