@@ -1,0 +1,3 @@
+[submodule "lr/ego_viz/godot-cpp"]
+	path = lr/ego_viz/godot-cpp
+	url = https://github.com/godotengine/godot-cpp.git
