@@ -27,3 +27,4 @@ material_override = SubResource("StandardMaterial3D_7dm0k")
 mesh = SubResource("ArrayMesh_ig7tw")
 
 [node name="EgoActor" type="EgoActor" parent="."]
+transform = Transform3D(-0.998106, -0.00198911, 0.0614873, -2.32831e-10, -0.999477, -0.0323331, 0.0615195, -0.0322718, 0.997584, 0.0188372, 0.299408, -1.57331)

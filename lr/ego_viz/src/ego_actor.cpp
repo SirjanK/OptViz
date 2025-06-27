@@ -13,7 +13,6 @@
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
-
 using namespace godot;
 
 void EgoActor::_bind_methods() {
@@ -32,7 +31,7 @@ EgoActor::EgoActor() {
     UtilityFunctions::print("EgoActor constructor called!");
     current_frame = 0;
     camera_offset = Vector3(0, 8, 10);  // 8 units above, 10 units behind
-    fps = 10.0f;  // 10 FPS default
+    fps = 1.0f;  // 1 FPS default
     time_since_last_frame = 0.0f;
     is_playing = true;  // Start playing automatically
     terrain_mesh = nullptr;
@@ -140,14 +139,16 @@ void EgoActor::load_trajectory_data(const String& csv_path) {
         if (line.is_empty()) continue;
         
         PackedStringArray parts = line.split(",");
-        if (parts.size() >= 4) {
-            Array frame_data;
-            frame_data.append(parts[0].to_int());  // t
-            frame_data.append(parts[1].to_float()); // x
-            frame_data.append(parts[2].to_float()); // y
-            frame_data.append(parts[3].to_float()); // z
-            trajectory_data.append(frame_data);
+        if (parts.size() != 3) {
+            // raise error and exit
+            UtilityFunctions::print("Invalid trajectory data line: " + line);
+            return;
         }
+        Array frame_data;
+        frame_data.append(parts[0].to_int());  // t
+        frame_data.append(parts[1].to_float()); // x
+        frame_data.append(parts[2].to_float()); // y
+        trajectory_data.append(frame_data);
     }
     
     UtilityFunctions::print("Loaded " + String::num_int64(trajectory_data.size()) + " trajectory frames");
@@ -162,12 +163,7 @@ void EgoActor::set_frame(int frame) {
     Array frame_data = trajectory_data[frame];
     float x = frame_data[1];
     float y = frame_data[2];
-    float z = 0.0f;
-    if (terrain_mesh) {
-        z = terrain_mesh->get_height_at(x, y);
-    } else if (frame_data.size() > 3) {
-        z = (float)frame_data[3];
-    }
+    float z = terrain_mesh->get_height_at(x, y);
     Vector3 position(x, y, z);
     set_position(position);
 
@@ -175,7 +171,7 @@ void EgoActor::set_frame(int frame) {
     Vector3 direction = Vector3(0, 0, 1); // Default forward direction
     if (frame < trajectory_data.size() - 1) {
         Array next_frame_data = trajectory_data[frame + 1];
-        float next_z = terrain_mesh ? terrain_mesh->get_height_at(next_frame_data[1], next_frame_data[2]) : (float)next_frame_data[3];
+        float next_z = terrain_mesh->get_height_at(next_frame_data[1], next_frame_data[2]);
         direction = (Vector3(next_frame_data[1], next_frame_data[2], next_z) - position).normalized();
     } else if (frame > 0) {
         Array prev_frame_data = trajectory_data[frame - 1];
