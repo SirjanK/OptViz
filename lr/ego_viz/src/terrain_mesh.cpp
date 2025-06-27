@@ -17,6 +17,7 @@ using namespace godot;
 
 void TerrainMesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("load_terrain_data", "csv_path"), &TerrainMesh::load_terrain_data);
+    ClassDB::bind_method(D_METHOD("load_terrain_binary", "bin_path"), &TerrainMesh::load_terrain_binary);
     ClassDB::bind_method(D_METHOD("generate_mesh"), &TerrainMesh::generate_mesh);
     ClassDB::bind_method(D_METHOD("set_material_color", "color"), &TerrainMesh::set_material_color);
     ClassDB::bind_method(D_METHOD("get_min_bounds"), &TerrainMesh::get_min_bounds);
@@ -47,6 +48,9 @@ void TerrainMesh::_ready() {
 }
 
 void TerrainMesh::load_terrain_data(const String& csv_path) {
+    // Clear the terrain points
+    terrain_points.clear();
+    
     Ref<FileAccess> file = FileAccess::open(csv_path, FileAccess::READ);
     if (!file.is_valid()) {
         UtilityFunctions::print("Failed to open terrain file: " + csv_path);
@@ -58,7 +62,6 @@ void TerrainMesh::load_terrain_data(const String& csv_path) {
     UtilityFunctions::print("Header: " + header);
     
     // Read all data points
-    Array points;
     while (!file->eof_reached()) {
         String line = file->get_line();
         if (line.is_empty()) continue;
@@ -66,80 +69,20 @@ void TerrainMesh::load_terrain_data(const String& csv_path) {
         PackedStringArray parts = line.split(",");
         if (parts.size() >= 3) {
             Vector3 point(parts[0].to_float(), parts[1].to_float(), parts[2].to_float());
-            points.append(point);
+            terrain_points.append(point);
         }
     }
     
-    // Determine grid dimensions by finding unique X and Y values
-    Array unique_x, unique_y;
-    for (int i = 0; i < points.size(); i++) {
-        Vector3 point = points[i];
-        if (!unique_x.has(point.x)) {
-            unique_x.append(point.x);
-        }
-        if (!unique_y.has(point.y)) {
-            unique_y.append(point.y);
-        }
-    }
-    
-    // Sort unique values
-    unique_x.sort();
-    unique_y.sort();
-    
-    grid_width = unique_x.size();
-    grid_height = unique_y.size();
-    
-    UtilityFunctions::print("Grid dimensions: " + String::num_int64(grid_width) + " x " + String::num_int64(grid_height));
-    
-    // Create 2D grid of points
-    terrain_points.clear();
-    terrain_points.resize(grid_width);
-    
-    for (int x = 0; x < grid_width; x++) {
-        Array row;
-        row.resize(grid_height);
-        terrain_points[x] = row;
-    }
-    
-    // Fill the grid
-    for (int i = 0; i < points.size(); i++) {
-        Vector3 point = points[i];
-        
-        // Find grid indices
-        int x_idx = unique_x.find(point.x);
-        int y_idx = unique_y.find(point.y);
-        
-        if (x_idx >= 0 && y_idx >= 0 && x_idx < grid_width && y_idx < grid_height) {
-            Array row = terrain_points[x_idx];
-            row[y_idx] = point;
-            terrain_points[x_idx] = row;
-        }
-    }
-    
-    // Calculate bounds
-    min_bounds = Vector3(FLT_MAX, FLT_MAX, FLT_MAX);
-    max_bounds = Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-    
-    for (int x = 0; x < grid_width; x++) {
-        Array row = terrain_points[x];
-        for (int y = 0; y < grid_height; y++) {
-            Vector3 point = row[y];
-            if (point.x < min_bounds.x) min_bounds.x = point.x;
-            if (point.y < min_bounds.y) min_bounds.y = point.y;
-            if (point.z < min_bounds.z) min_bounds.z = point.z;
-            if (point.x > max_bounds.x) max_bounds.x = point.x;
-            if (point.y > max_bounds.y) max_bounds.y = point.y;
-            if (point.z > max_bounds.z) max_bounds.z = point.z;
-        }
-    }
-    
-    UtilityFunctions::print("Loaded " + String::num_int64(points.size()) + " terrain points");
-    UtilityFunctions::print("Bounds: min(" + String::num(min_bounds.x) + ", " + String::num(min_bounds.y) + ", " + String::num(min_bounds.z) + 
-                           ") max(" + String::num(max_bounds.x) + ", " + String::num(max_bounds.y) + ", " + String::num(max_bounds.z) + ")");
+    UtilityFunctions::print("Loaded " + String::num_int64(terrain_points.size()) + " terrain points");
+}
+
+void TerrainMesh::load_terrain_binary(const String& bin_path) {
+    // Implementation of load_terrain_binary method
 }
 
 void TerrainMesh::generate_mesh() {
-    if (grid_width < 2 || grid_height < 2) {
+    // TODO(sirjan) don't hardcode
+    if (terrain_points.size() < 32) {
         UtilityFunctions::print("Grid too small to generate mesh");
         return;
     }
@@ -148,46 +91,42 @@ void TerrainMesh::generate_mesh() {
     surface_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
     
     // Calculate height range for color mapping
-    float min_height = min_bounds.z;
-    float max_height = max_bounds.z;
+    // TODO(sirjan) don't hardcode
+    float min_height = -0.1f;
+    float max_height = 6.0f;
     float height_range = max_height - min_height;
     
     UtilityFunctions::print("Height range: " + String::num(min_height) + " to " + String::num(max_height));
     
     // Generate triangles for each grid cell
-    for (int x = 0; x < grid_width - 1; x++) {
-        for (int y = 0; y < grid_height - 1; y++) {
-            Array row1 = terrain_points[x];
-            Array row2 = terrain_points[x + 1];
-            
-            Vector3 p1 = row1[y];           // Current point
-            Vector3 p2 = row1[y + 1];       // Point to the right
-            Vector3 p3 = row2[y];           // Point below
-            Vector3 p4 = row2[y + 1];       // Point below and to the right
-            
-            // Calculate colors based on height
-            Color c1 = get_height_color(p1.z, min_height, height_range);
-            Color c2 = get_height_color(p2.z, min_height, height_range);
-            Color c3 = get_height_color(p3.z, min_height, height_range);
-            Color c4 = get_height_color(p4.z, min_height, height_range);
-            
-            // Create two triangles for this grid cell
-            // Triangle 1: p1, p2, p3
-            surface_tool->add_vertex(p1);
-            surface_tool->set_color(c1);
-            surface_tool->add_vertex(p2);
-            surface_tool->set_color(c2);
-            surface_tool->add_vertex(p3);
-            surface_tool->set_color(c3);
-            
-            // Triangle 2: p2, p4, p3
-            surface_tool->add_vertex(p2);
-            surface_tool->set_color(c2);
-            surface_tool->add_vertex(p4);
-            surface_tool->set_color(c4);
-            surface_tool->add_vertex(p3);
-            surface_tool->set_color(c3);
-        }
+    for (int i = 0; i < terrain_points.size() - 1; i++) {
+        Vector3 p1 = terrain_points[i];
+        Vector3 p2 = terrain_points[i + 1];
+        Vector3 p3 = terrain_points[i + grid_width];
+        Vector3 p4 = terrain_points[i + grid_width + 1];
+        
+        // Calculate colors based on height
+        Color c1 = get_height_color(p1.z, min_height, height_range);
+        Color c2 = get_height_color(p2.z, min_height, height_range);
+        Color c3 = get_height_color(p3.z, min_height, height_range);
+        Color c4 = get_height_color(p4.z, min_height, height_range);
+        
+        // Create two triangles for this grid cell
+        // Triangle 1: p1, p2, p3
+        surface_tool->add_vertex(p1);
+        surface_tool->set_color(c1);
+        surface_tool->add_vertex(p2);
+        surface_tool->set_color(c2);
+        surface_tool->add_vertex(p3);
+        surface_tool->set_color(c3);
+        
+        // Triangle 2: p2, p4, p3
+        surface_tool->add_vertex(p2);
+        surface_tool->set_color(c2);
+        surface_tool->add_vertex(p4);
+        surface_tool->set_color(c4);
+        surface_tool->add_vertex(p3);
+        surface_tool->set_color(c3);
     }
     
     Ref<ArrayMesh> terrain_mesh = surface_tool->commit();

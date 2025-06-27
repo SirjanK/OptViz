@@ -1,12 +1,16 @@
 # mock terrain generator for testing purposes
-# we generate a CSV of (x, y, z) points that will then be used
-# by ego_viz for testing visualization.
-# run this script to generate the mock_terrain.csv file and move
-# it to ego_viz/assets directory.
+# we generate three files:
+#  1. mock_terrain_metadata.json: contains metadata about the terrain like
+# grid min and max bounds and delta.
+#  2. mock_terrain.bin: binary file containing the z values of the terrain grid
+#  3. mock_trajectory.csv: contains the trajectory of the ego actor
+# move all these to lr/ego_viz/godot/assets/
 
 
 import numpy as np
+import json
 import pandas as pd
+from typing import Tuple, Dict, Any
 
 # grid parameters
 X_MIN = -5
@@ -24,23 +28,33 @@ NUM_SPIRALS = 4
 MAX_TIME = 100
 
 
-def generate_mock_terrain(x_min: float, x_max: float, y_min: float, y_max: float, delta: float) -> np.ndarray:
+def generate_mock_terrain(x_min: float, x_max: float, y_min: float, y_max: float, delta: float) -> Tuple[Dict[str, Any], np.ndarray]:
     """
-    Generate mock terrain as a numpy array of (x, y, z) points.
+    Generate mock terrain data
 
     :param x_min: minimum x coordinate
     :param x_max: maximum x coordinate
     :param y_min: minimum y coordinate
     :param y_max: maximum y coordinate
     :param delta: spacing between points
-    :return: numpy array of (x, y, z) points
+    :return: 1) metadata about the terrain, 2) 2D numpy array of z for (x, y) grid
     """
     x = np.arange(x_min, x_max, delta)
     y = np.arange(y_min, y_max, delta)
     x, y = np.meshgrid(x, y)
     radius = np.sqrt(x**2 + y**2)
     z = AMPLITUDE * np.cos(2 * np.pi * radius / OSCILLATION_RADIUS)
-    return np.column_stack((x.flatten(), y.flatten(), z.flatten()))
+
+    # create metadata
+    metadata = {
+        "x_min": x_min,
+        "width": len(x),
+        "y_min": y_min,
+        "height": len(y),
+        "delta": delta,
+    }
+
+    return metadata, z
 
 
 def generate_mock_trajectory(max_radius: float, num_spirals: int, max_time: int) -> pd.DataFrame:
@@ -71,15 +85,26 @@ def generate_mock_trajectory(max_radius: float, num_spirals: int, max_time: int)
     y = radius * np.sin(theta)
     return pd.DataFrame({"t": t, "x": x, "y": y})
 
+
+def save_terrain_binary(terrain_z, filename):
+    """
+    Save terrain z values as a flattened binary array of float32.
+    """
+    # Write height data as flattened float32 array
+    terrain_z.flatten().astype(np.float32).tofile(filename)
+
+
 def main():
-    terrain = generate_mock_terrain(
+    terrain_metadata, terrain_z = generate_mock_terrain(
         x_min=X_MIN, 
         x_max=X_MAX, 
         y_min=Y_MIN, 
         y_max=Y_MAX, 
         delta=DELTA,
     )
-    np.savetxt("mock_terrain.csv", terrain, delimiter=",", header="x,y,z")
+    save_terrain_binary(terrain_z, filename="mock_terrain.bin")
+    with open("mock_terrain_metadata.json", "w") as f:
+        json.dump(terrain_metadata, f)
 
     max_radius = min(abs(X_MIN), abs(X_MAX), abs(Y_MIN), abs(Y_MAX))
     trajectory = generate_mock_trajectory(

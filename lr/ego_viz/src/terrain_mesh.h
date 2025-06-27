@@ -16,11 +16,8 @@ class TerrainMesh : public MeshInstance3D {
     GDCLASS(TerrainMesh, MeshInstance3D)
 
 private:
+    // all points of the terrain mesh (x, y, z)
     Array terrain_points;
-    int grid_width;
-    int grid_height;
-    Vector3 min_bounds;
-    Vector3 max_bounds;
 
 protected:
     static void _bind_methods();
@@ -31,14 +28,15 @@ public:
 
     void _ready() override;
     
+    // Load terrain data from the CSV file and store in terrain_points
     void load_terrain_data(const String& csv_path);
+    // Load terrain data from binary file
+    void load_terrain_binary(const String& bin_path);
+    // Generate the mesh from the terrain data
     void generate_mesh();
+    // Set the material color of the terrain mesh
     void set_material_color(const Color& color);
     
-    Vector3 get_min_bounds() const { return min_bounds; }
-    Vector3 get_max_bounds() const { return max_bounds; }
-    int get_grid_width() const { return grid_width; }
-    int get_grid_height() const { return grid_height; }
     float get_height_at(float x, float y) const;
     Color get_height_color(float height, float min_height, float height_range) const;
 };
