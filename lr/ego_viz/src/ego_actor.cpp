@@ -31,7 +31,7 @@ void EgoActor::_bind_methods() {
 EgoActor::EgoActor() {
     UtilityFunctions::print("EgoActor constructor called!");
     current_frame = 0;
-    camera_offset = Vector3(0, -3, 8);  // 3 units above, 8 units behind
+    camera_offset = Vector3(0, 2, 5);  // 2 units above, 5 units behind
     fps = 10.0f;  // 10 FPS default
     time_since_last_frame = 0.0f;
     is_playing = true;  // Start playing automatically
@@ -49,17 +49,17 @@ void EgoActor::_ready() {
     surface_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
     
     // Define triangle vertices (pointing forward) - make it larger
-    surface_tool->add_vertex(Vector3(-2, 0, -2));  // Back left
-    surface_tool->add_vertex(Vector3(2, 0, -2));   // Back right
-    surface_tool->add_vertex(Vector3(0, 0, 2));    // Front center (point)
+    surface_tool->add_vertex(Vector3(-1, 0, -1));  // Back left
+    surface_tool->add_vertex(Vector3(1, 0, -1));   // Back right
+    surface_tool->add_vertex(Vector3(0, 0, 1));    // Front center (point)
     
     Ref<ArrayMesh> triangle_mesh = surface_tool->commit();
 
     // Create a material to make it visible
     Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
-    material->set_albedo(Color(0.2, 0.8, 0.2, 1.0)); // Green color
-    material->set_emission(Color(0.3, 0.6, 0.3, 1.0)); // Add emission to make it glow
-    material->set_emission_energy_multiplier(2.0); // Make emission brighter
+    material->set_albedo(Color(1.0, 0.0, 0.0, 1.0)); // Bright red color
+    material->set_emission(Color(0.5, 0.0, 0.0, 1.0)); // Add emission to make it glow
+    material->set_emission_energy_multiplier(3.0); // Make emission brighter
 
     // Create the mesh instance
     MeshInstance3D* mesh_instance = memnew(MeshInstance3D);
@@ -74,6 +74,8 @@ void EgoActor::_ready() {
     Camera3D* camera = memnew(Camera3D);
     camera->set_name("FollowCamera");
     camera->set_current(true);  // Make this the active camera
+    camera->set_near(0.1);  // Set near plane to avoid clipping
+    camera->set_far(1000.0);  // Set far plane
     add_child(camera);
     UtilityFunctions::print("Camera added to EgoActor");
 
@@ -151,11 +153,43 @@ void EgoActor::set_frame(int frame) {
     Vector3 position(frame_data[1], frame_data[2], frame_data[3]);
     set_position(position);
     
+    // Calculate steering direction (where we're heading)
+    Vector3 direction = Vector3(0, 0, 1); // Default forward direction
+    
+    if (frame < trajectory_data.size() - 1) {
+        // Get next position to calculate direction
+        Array next_frame_data = trajectory_data[frame + 1];
+        Vector3 next_position(next_frame_data[1], next_frame_data[2], next_frame_data[3]);
+        direction = (next_position - position).normalized();
+    } else if (frame > 0) {
+        // If at last frame, use direction from previous frame
+        Array prev_frame_data = trajectory_data[frame - 1];
+        Vector3 prev_position(prev_frame_data[1], prev_frame_data[2], prev_frame_data[3]);
+        direction = (position - prev_position).normalized();
+    }
+    
+    // Calculate rotation to face the direction
+    if (direction.length() > 0.001) { // Avoid division by zero
+        // Create a rotation that points the triangle's forward direction (Z-axis) toward the movement direction
+        Vector3 up = Vector3(0, 1, 0);
+        Vector3 forward = Vector3(0, 0, 1); // Triangle's forward direction
+        
+        // Create a basis (rotation matrix) that aligns forward with direction
+        Vector3 right = direction.cross(up).normalized();
+        up = right.cross(direction).normalized(); // Recalculate up to ensure orthogonality
+        
+        Basis rotation_basis(right, up, direction);
+        Quaternion rotation = rotation_basis.get_rotation_quaternion();
+        
+        set_quaternion(rotation);
+    }
+    
     // Update camera position to follow behind
     Camera3D* camera = Object::cast_to<Camera3D>(get_node_or_null("FollowCamera"));
     if (camera) {
+        // Calculate camera position in world coordinates, behind the actor
         Vector3 camera_pos = position - camera_offset;
-        camera->set_position(camera_pos);
+        camera->set_global_position(camera_pos);
         camera->look_at(position, Vector3(0, 1, 0));
     }
     

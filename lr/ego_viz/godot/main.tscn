@@ -48,4 +48,4 @@ size = Vector3(2, 2, 2)
 material = SubResource("StandardMaterial3D_5")
 
 [node name="EgoActor" type="EgoActor" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.5, 5.9, 11.8)
+transform = Transform3D(0.371391, 0.169516, -0.912871, 0, -0.983192, -0.182574, -0.928477, 0.0678065, -0.365149, 18, 3.6, 7.2)
