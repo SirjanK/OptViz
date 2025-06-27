@@ -4,33 +4,191 @@
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/plane_mesh.hpp>
 #include <godot_cpp/classes/standard_material3d.hpp>
+#include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/input.hpp>
+#include <godot_cpp/classes/input_event_key.hpp>
+#include <godot_cpp/classes/camera3d.hpp>
+#include <godot_cpp/classes/surface_tool.hpp>
+#include <godot_cpp/classes/array_mesh.hpp>
+#include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 
 using namespace godot;
 
 void EgoActor::_bind_methods() {
-    // No methods to bind for now
+    ClassDB::bind_method(D_METHOD("load_trajectory_data", "csv_path"), &EgoActor::load_trajectory_data);
+    ClassDB::bind_method(D_METHOD("set_frame", "frame"), &EgoActor::set_frame);
+    ClassDB::bind_method(D_METHOD("get_current_frame"), &EgoActor::get_current_frame);
+    ClassDB::bind_method(D_METHOD("get_total_frames"), &EgoActor::get_total_frames);
 }
 
 EgoActor::EgoActor() {
     UtilityFunctions::print("EgoActor constructor called!");
-    
-    // Create a visual representation
-    Ref<PlaneMesh> plane_mesh = memnew(PlaneMesh);
-    plane_mesh->set_size(Vector2(2.0, 2.0)); // 2x2 unit plane
-    
-    // Create a material to make it visible
-    Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
-    material->set_albedo(Color(0.2, 0.8, 0.2, 1.0)); // Green color
-    
-    // Create the mesh instance
-    MeshInstance3D* mesh_instance = memnew(MeshInstance3D);
-    mesh_instance->set_mesh(plane_mesh);
-    mesh_instance->set_material_override(material);
-    
-    // Add it as a child
-    add_child(mesh_instance);
+    current_frame = 0;
+    camera_offset = Vector3(0, -3, 8);  // 3 units above, 8 units behind (negative Y means above)
 }
 
 EgoActor::~EgoActor() {
     UtilityFunctions::print("EgoActor destructor called!");
+}
+
+void EgoActor::_ready() {
+    UtilityFunctions::print("EgoActor _ready() called!");
+    
+    // Create a triangle mesh using SurfaceTool
+    Ref<SurfaceTool> surface_tool = memnew(SurfaceTool);
+    surface_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
+    
+    // Define triangle vertices (pointing forward) - make it larger
+    surface_tool->add_vertex(Vector3(-2, 0, -2));  // Back left
+    surface_tool->add_vertex(Vector3(2, 0, -2));   // Back right
+    surface_tool->add_vertex(Vector3(0, 0, 2));    // Front center (point)
+    
+    Ref<ArrayMesh> triangle_mesh = surface_tool->commit();
+
+    // Create a material to make it visible
+    Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
+    material->set_albedo(Color(0.2, 0.8, 0.2, 1.0)); // Green color
+    material->set_emission(Color(0.3, 0.6, 0.3, 1.0)); // Add emission to make it glow
+    material->set_emission_energy_multiplier(2.0); // Make emission brighter
+
+    // Create the mesh instance
+    MeshInstance3D* mesh_instance = memnew(MeshInstance3D);
+    mesh_instance->set_mesh(triangle_mesh);
+    mesh_instance->set_material_override(material);
+
+    // Add it as a child
+    add_child(mesh_instance);
+    UtilityFunctions::print("Triangle mesh added to EgoActor");
+
+    // Create and add camera
+    Camera3D* camera = memnew(Camera3D);
+    camera->set_name("FollowCamera");
+    camera->set_current(true);  // Make this the active camera
+    add_child(camera);
+    UtilityFunctions::print("Camera added to EgoActor");
+
+    // Load trajectory data
+    load_trajectory_data("res://assets/trajectory.csv");
+
+    // Set initial position if data loaded
+    if (trajectory_data.size() > 0) {
+        set_frame(0);
+        UtilityFunctions::print("Initial frame set to 0");
+    } else {
+        UtilityFunctions::print("No trajectory data loaded!");
+    }
+}
+
+void EgoActor::_input(const Ref<InputEvent>& event) {
+    // Check for input actions instead of direct key events
+    Input* input = Input::get_singleton();
+    
+    if (input->is_action_just_pressed("frame_left")) {
+        if (current_frame > 0) {
+            set_frame(current_frame - 1);
+        }
+    }
+    
+    if (input->is_action_just_pressed("frame_right")) {
+        if (current_frame < trajectory_data.size() - 1) {
+            set_frame(current_frame + 1);
+        }
+    }
+    
+    // Keep the Home/End keys for quick navigation
+    Ref<InputEventKey> key_event = event;
+    if (key_event.is_valid() && key_event->is_pressed()) {
+        int keycode = key_event->get_keycode();
+        
+        switch (keycode) {
+            case Key::KEY_HOME:
+                set_frame(0);
+                break;
+            case Key::KEY_END:
+                set_frame(trajectory_data.size() - 1);
+                break;
+        }
+    }
+}
+
+void EgoActor::load_trajectory_data(const String& csv_path) {
+    Ref<FileAccess> file = FileAccess::open(csv_path, FileAccess::READ);
+    if (!file.is_valid()) {
+        UtilityFunctions::print("Failed to open trajectory file: " + csv_path);
+        return;
+    }
+    
+    // Skip header
+    String header = file->get_line();
+    
+    // Read data
+    while (!file->eof_reached()) {
+        String line = file->get_line();
+        if (line.is_empty()) continue;
+        
+        PackedStringArray parts = line.split(",");
+        if (parts.size() >= 4) {
+            Array frame_data;
+            frame_data.append(parts[0].to_int());  // t
+            frame_data.append(parts[1].to_float()); // x
+            frame_data.append(parts[2].to_float()); // y
+            frame_data.append(parts[3].to_float()); // z
+            trajectory_data.append(frame_data);
+        }
+    }
+    
+    UtilityFunctions::print("Loaded " + String::num_int64(trajectory_data.size()) + " trajectory frames");
+}
+
+void EgoActor::set_frame(int frame) {
+    if (frame < 0 || frame >= trajectory_data.size()) {
+        return;
+    }
+    
+    current_frame = frame;
+    update_position();
+    update_camera_position();
+    
+    // Print frame info
+    Array frame_data = trajectory_data[frame];
+    UtilityFunctions::print("Frame " + String::num_int64(frame) + 
+                           ": pos(" + String::num(frame_data[1]) + ", " + 
+                           String::num(frame_data[2]) + ", " + 
+                           String::num(frame_data[3]) + ")");
+}
+
+void EgoActor::update_position() {
+    if (current_frame >= trajectory_data.size()) return;
+    
+    Array frame_data = trajectory_data[current_frame];
+    Vector3 position(frame_data[1], frame_data[2], frame_data[3]);
+    set_position(position);
+}
+
+void EgoActor::update_camera_position() {
+    Camera3D* camera = Object::cast_to<Camera3D>(get_node_or_null("FollowCamera"));
+    if (!camera) {
+        UtilityFunctions::print("ERROR: Camera not found!");
+        return;
+    }
+    
+    // Calculate camera position behind the actor
+    Vector3 actor_pos = get_position();
+    Vector3 camera_pos = actor_pos - camera_offset;
+    camera->set_position(camera_pos);
+    
+    UtilityFunctions::print("Camera positioned at: " + String::num(camera_pos.x) + ", " + 
+                           String::num(camera_pos.y) + ", " + String::num(camera_pos.z));
+    UtilityFunctions::print("Looking at actor at: " + String::num(actor_pos.x) + ", " + 
+                           String::num(actor_pos.y) + ", " + String::num(actor_pos.z));
+    
+    // Make camera look at the actor from behind
+    camera->look_at(actor_pos, Vector3(0, 1, 0));
+    
+    // Ensure camera is current
+    if (!camera->is_current()) {
+        camera->set_current(true);
+        UtilityFunctions::print("Camera set as current!");
+    }
 } 

@@ -1,3 +1,54 @@
+# Godot editor cache and generated files
+lr/ego_viz/godot/.godot/
+lr/ego_viz/godot/*.translation
+lr/ego_viz/godot/*.translation.bin
+lr/ego_viz/godot/assets/*.translation
+lr/ego_viz/godot/assets/*.translation.bin
+
+# Build artifacts
+lr/ego_viz/build/
+*.o
+*.so
+*.dylib
+*.framework/
+*.a
+*.lib
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# IDE files
+.vscode/
+.idea/
+*.code-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
 # Virtual Environment
 venv/
 env/
@@ -5,7 +56,6 @@ ENV/
 .venv/
 
 # Python
-__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -88,8 +138,6 @@ runs/
 logs/
 
 # IDE
-.vscode/
-.idea/
 *.swp
 *.swo
 *~
@@ -101,4 +149,113 @@ logs/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db 
+Thumbs.db
+
+# Godot-specific ignores
+*/.godot/
+*/.import/
+*.import
+*/project.binary
+*/project.godot.uid
+
+# Build outputs
+bin/
+*.dll
+
+# Godot extension builds
+*.gdextension
+*.gdnlib
+*.gdns
+
+# Cache directories
+.cache/
+cache/
+
+# SCons build files
+.sconsign.dblite
+.sconsign.dblite-journal
+
+# Node modules (if using npm/yarn)
+node_modules/
+
+# Generated files
+gen/
+generated/
+
+test_outputs/
+test_results/
+
+# Documentation builds
+docs/_build/
+docs/build/
+
+# Package files
+*.zip
+*.tar.gz
+*.rar
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Lock files
+*.lock
+
+# Environment files
+.env.local
+.env.production
+
+# Editor-specific files
+*.user
+*.autosave
+
+# Asset pipeline temporary files
+*.import.tmp
+*.import.meta.tmp
+
+# Shader cache
+shader_cache/
+
+# Audio cache
+audio_cache/
+
+# Texture cache
+texture_cache/
+
+# Mesh cache
+mesh_cache/
+
+# Animation cache
+animation_cache/
+
+# Physics cache
+physics_cache/
+
+# Navigation cache
+navigation_cache/
+
+# Rendering cache
+rendering_cache/
+
+# Script cache
+script_cache/
+
+# Resource cache
+resource_cache/
+
+# Editor settings
+editor_settings.tres
+editor_layout.cfg
+
+# User-specific files
+.godot/user/
+
+# Export templates
+export_templates/
+
+# Addon files
+addons/
+
+# Plugin files
+plugins/ 
