@@ -92,7 +92,7 @@ void EgoActor::_ready() {
     }
 
     // Load trajectory data
-    load_trajectory_data("res://assets/trajectory.csv");
+    load_trajectory_data("res://assets/mock_trajectory.csv");
 
     // Set initial position if data loaded
     if (trajectory_data.size() > 0) {
