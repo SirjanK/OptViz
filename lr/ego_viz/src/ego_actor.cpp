@@ -30,7 +30,7 @@ void EgoActor::_bind_methods() {
 EgoActor::EgoActor() {
     UtilityFunctions::print("EgoActor constructor called!");
     current_frame = 0;
-    camera_offset = Vector3(0, 8, 10);  // 8 units above, 10 units behind
+    camera_offset = Vector3(0, 0.5, 0.7);
     fps = 1.0f;  // 1 FPS default
     time_since_last_frame = 0.0f;
     is_playing = true;  // Start playing automatically
