@@ -20,12 +20,21 @@ void EgoActor::_bind_methods() {
     ClassDB::bind_method(D_METHOD("set_frame", "frame"), &EgoActor::set_frame);
     ClassDB::bind_method(D_METHOD("get_current_frame"), &EgoActor::get_current_frame);
     ClassDB::bind_method(D_METHOD("get_total_frames"), &EgoActor::get_total_frames);
+    ClassDB::bind_method(D_METHOD("set_fps", "fps"), &EgoActor::set_fps);
+    ClassDB::bind_method(D_METHOD("get_fps"), &EgoActor::get_fps);
+    ClassDB::bind_method(D_METHOD("play"), &EgoActor::play);
+    ClassDB::bind_method(D_METHOD("pause"), &EgoActor::pause);
+    ClassDB::bind_method(D_METHOD("stop"), &EgoActor::stop);
+    ClassDB::bind_method(D_METHOD("is_playing_animation"), &EgoActor::is_playing_animation);
 }
 
 EgoActor::EgoActor() {
     UtilityFunctions::print("EgoActor constructor called!");
     current_frame = 0;
-    camera_offset = Vector3(0, -3, 8);  // 3 units above, 8 units behind (negative Y means above)
+    camera_offset = Vector3(0, -3, 8);  // 3 units above, 8 units behind
+    fps = 10.0f;  // 10 FPS default
+    time_since_last_frame = 0.0f;
+    is_playing = true;  // Start playing automatically
 }
 
 EgoActor::~EgoActor() {
@@ -80,35 +89,24 @@ void EgoActor::_ready() {
     }
 }
 
-void EgoActor::_input(const Ref<InputEvent>& event) {
-    // Check for input actions instead of direct key events
-    Input* input = Input::get_singleton();
-    
-    if (input->is_action_just_pressed("frame_left")) {
-        if (current_frame > 0) {
-            set_frame(current_frame - 1);
-        }
+void EgoActor::_process(double delta) {
+    if (!is_playing || trajectory_data.size() == 0) {
+        return;
     }
     
-    if (input->is_action_just_pressed("frame_right")) {
-        if (current_frame < trajectory_data.size() - 1) {
-            set_frame(current_frame + 1);
-        }
-    }
+    time_since_last_frame += delta;
+    float frame_time = 1.0f / fps;
     
-    // Keep the Home/End keys for quick navigation
-    Ref<InputEventKey> key_event = event;
-    if (key_event.is_valid() && key_event->is_pressed()) {
-        int keycode = key_event->get_keycode();
+    if (time_since_last_frame >= frame_time) {
+        time_since_last_frame -= frame_time;
         
-        switch (keycode) {
-            case Key::KEY_HOME:
-                set_frame(0);
-                break;
-            case Key::KEY_END:
-                set_frame(trajectory_data.size() - 1);
-                break;
+        // Move to next frame
+        int next_frame = current_frame + 1;
+        if (next_frame >= trajectory_data.size()) {
+            // Loop back to start
+            next_frame = 0;
         }
+        set_frame(next_frame);
     }
 }
 
@@ -147,48 +145,54 @@ void EgoActor::set_frame(int frame) {
     }
     
     current_frame = frame;
-    update_position();
-    update_camera_position();
     
-    // Print frame info
+    // Update position
     Array frame_data = trajectory_data[frame];
-    UtilityFunctions::print("Frame " + String::num_int64(frame) + 
-                           ": pos(" + String::num(frame_data[1]) + ", " + 
-                           String::num(frame_data[2]) + ", " + 
-                           String::num(frame_data[3]) + ")");
-}
-
-void EgoActor::update_position() {
-    if (current_frame >= trajectory_data.size()) return;
-    
-    Array frame_data = trajectory_data[current_frame];
     Vector3 position(frame_data[1], frame_data[2], frame_data[3]);
     set_position(position);
+    
+    // Update camera position to follow behind
+    Camera3D* camera = Object::cast_to<Camera3D>(get_node_or_null("FollowCamera"));
+    if (camera) {
+        Vector3 camera_pos = position - camera_offset;
+        camera->set_position(camera_pos);
+        camera->look_at(position, Vector3(0, 1, 0));
+    }
+    
+    // Print frame info every 10 frames to avoid spam
+    if (frame % 10 == 0) {
+        UtilityFunctions::print("Frame " + String::num_int64(frame) + 
+                               ": pos(" + String::num(position.x) + ", " + 
+                               String::num(position.y) + ", " + 
+                               String::num(position.z) + ")");
+    }
 }
 
-void EgoActor::update_camera_position() {
-    Camera3D* camera = Object::cast_to<Camera3D>(get_node_or_null("FollowCamera"));
-    if (!camera) {
-        UtilityFunctions::print("ERROR: Camera not found!");
-        return;
+void EgoActor::set_fps(float new_fps) {
+    fps = new_fps;
+}
+
+float EgoActor::get_fps() const {
+    return fps;
+}
+
+void EgoActor::play() {
+    is_playing = true;
+}
+
+void EgoActor::pause() {
+    is_playing = false;
+}
+
+void EgoActor::stop() {
+    is_playing = false;
+    current_frame = 0;
+    time_since_last_frame = 0.0f;
+    if (trajectory_data.size() > 0) {
+        set_frame(0);
     }
-    
-    // Calculate camera position behind the actor
-    Vector3 actor_pos = get_position();
-    Vector3 camera_pos = actor_pos - camera_offset;
-    camera->set_position(camera_pos);
-    
-    UtilityFunctions::print("Camera positioned at: " + String::num(camera_pos.x) + ", " + 
-                           String::num(camera_pos.y) + ", " + String::num(camera_pos.z));
-    UtilityFunctions::print("Looking at actor at: " + String::num(actor_pos.x) + ", " + 
-                           String::num(actor_pos.y) + ", " + String::num(actor_pos.z));
-    
-    // Make camera look at the actor from behind
-    camera->look_at(actor_pos, Vector3(0, 1, 0));
-    
-    // Ensure camera is current
-    if (!camera->is_current()) {
-        camera->set_current(true);
-        UtilityFunctions::print("Camera set as current!");
-    }
+}
+
+bool EgoActor::is_playing_animation() const {
+    return is_playing;
 } 
