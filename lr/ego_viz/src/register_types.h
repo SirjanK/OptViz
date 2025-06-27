@@ -3,7 +3,7 @@
 
 #include <godot_cpp/godot.hpp>
 
-void register_ego_viz_types(godot::ModuleInitializationLevel p_level);
-void unregister_ego_viz_types(godot::ModuleInitializationLevel p_level);
+void initialize_ego_viz_module(godot::ModuleInitializationLevel p_level);
+void uninitialize_ego_viz_module(godot::ModuleInitializationLevel p_level);
 
 #endif // REGISTER_TYPES_H 

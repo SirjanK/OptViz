@@ -12,6 +12,7 @@ add_subdirectory(godot-cpp)
 add_library(ego_viz SHARED
     src/register_types.cpp
     src/ego_actor.cpp
+    src/terrain_mesh.cpp
 )
 
 # Add include directories for godot-cpp headers

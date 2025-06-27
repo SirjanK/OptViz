@@ -1,4 +1,5 @@
 #include "ego_actor.h"
+#include "terrain_mesh.h"
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
@@ -21,7 +22,6 @@ void EgoActor::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_current_frame"), &EgoActor::get_current_frame);
     ClassDB::bind_method(D_METHOD("get_total_frames"), &EgoActor::get_total_frames);
     ClassDB::bind_method(D_METHOD("set_fps", "fps"), &EgoActor::set_fps);
-    ClassDB::bind_method(D_METHOD("get_fps"), &EgoActor::get_fps);
     ClassDB::bind_method(D_METHOD("play"), &EgoActor::play);
     ClassDB::bind_method(D_METHOD("pause"), &EgoActor::pause);
     ClassDB::bind_method(D_METHOD("stop"), &EgoActor::stop);
@@ -31,10 +31,11 @@ void EgoActor::_bind_methods() {
 EgoActor::EgoActor() {
     UtilityFunctions::print("EgoActor constructor called!");
     current_frame = 0;
-    camera_offset = Vector3(0, 2, 5);  // 2 units above, 5 units behind
+    camera_offset = Vector3(0, 8, 10);  // 8 units above, 10 units behind
     fps = 10.0f;  // 10 FPS default
     time_since_last_frame = 0.0f;
     is_playing = true;  // Start playing automatically
+    terrain_mesh = nullptr;
 }
 
 EgoActor::~EgoActor() {
@@ -78,6 +79,17 @@ void EgoActor::_ready() {
     camera->set_far(1000.0);  // Set far plane
     add_child(camera);
     UtilityFunctions::print("Camera added to EgoActor");
+
+    // Find the TerrainMesh node in the scene
+    Node* parent = get_parent();
+    if (parent) {
+        terrain_mesh = Object::cast_to<TerrainMesh>(parent->get_node_or_null("TerrainMesh"));
+        if (terrain_mesh) {
+            UtilityFunctions::print("TerrainMesh found and linked to EgoActor");
+        } else {
+            UtilityFunctions::print("TerrainMesh not found!");
+        }
+    }
 
     // Load trajectory data
     load_trajectory_data("res://assets/trajectory.csv");
@@ -145,52 +157,50 @@ void EgoActor::set_frame(int frame) {
     if (frame < 0 || frame >= trajectory_data.size()) {
         return;
     }
-    
     current_frame = frame;
-    
     // Update position
     Array frame_data = trajectory_data[frame];
-    Vector3 position(frame_data[1], frame_data[2], frame_data[3]);
+    float x = frame_data[1];
+    float y = frame_data[2];
+    float z = 0.0f;
+    if (terrain_mesh) {
+        z = terrain_mesh->get_height_at(x, y);
+    } else if (frame_data.size() > 3) {
+        z = (float)frame_data[3];
+    }
+    Vector3 position(x, y, z);
     set_position(position);
-    
+
     // Calculate steering direction (where we're heading)
     Vector3 direction = Vector3(0, 0, 1); // Default forward direction
-    
     if (frame < trajectory_data.size() - 1) {
-        // Get next position to calculate direction
         Array next_frame_data = trajectory_data[frame + 1];
-        Vector3 next_position(next_frame_data[1], next_frame_data[2], next_frame_data[3]);
-        direction = (next_position - position).normalized();
+        float next_z = terrain_mesh ? terrain_mesh->get_height_at(next_frame_data[1], next_frame_data[2]) : (float)next_frame_data[3];
+        direction = (Vector3(next_frame_data[1], next_frame_data[2], next_z) - position).normalized();
     } else if (frame > 0) {
-        // If at last frame, use direction from previous frame
         Array prev_frame_data = trajectory_data[frame - 1];
-        Vector3 prev_position(prev_frame_data[1], prev_frame_data[2], prev_frame_data[3]);
-        direction = (position - prev_position).normalized();
+        float prev_z = terrain_mesh ? terrain_mesh->get_height_at(prev_frame_data[1], prev_frame_data[2]) : (float)prev_frame_data[3];
+        direction = (position - Vector3(prev_frame_data[1], prev_frame_data[2], prev_z)).normalized();
     }
-    
     // Calculate rotation to face the direction
-    if (direction.length() > 0.001) { // Avoid division by zero
-        // Create a rotation that points the triangle's forward direction (Z-axis) toward the movement direction
+    if (direction.length() > 0.001) {
         Vector3 up = Vector3(0, 1, 0);
-        Vector3 forward = Vector3(0, 0, 1); // Triangle's forward direction
-        
-        // Create a basis (rotation matrix) that aligns forward with direction
         Vector3 right = direction.cross(up).normalized();
-        up = right.cross(direction).normalized(); // Recalculate up to ensure orthogonality
-        
+        up = right.cross(direction).normalized();
         Basis rotation_basis(right, up, direction);
         Quaternion rotation = rotation_basis.get_rotation_quaternion();
-        
         set_quaternion(rotation);
     }
-    
-    // Update camera position to follow behind
+
+    // Update camera position to follow behind and above
     Camera3D* camera = Object::cast_to<Camera3D>(get_node_or_null("FollowCamera"));
     if (camera) {
-        // Calculate camera position in world coordinates, behind the actor
-        Vector3 camera_pos = position - camera_offset;
+        // Camera offset is in local space; transform it by EgoActor's rotation
+        Vector3 cam_offset = -camera_offset; // Behind and above
+        Vector3 cam_world_offset = get_global_transform().basis.xform(cam_offset);
+        Vector3 camera_pos = get_global_position() + cam_world_offset;
         camera->set_global_position(camera_pos);
-        camera->look_at(position, Vector3(0, 1, 0));
+        camera->look_at(get_global_position(), Vector3(0, 1, 0));
     }
     
     // Print frame info every 10 frames to avoid spam
@@ -206,18 +216,6 @@ void EgoActor::set_fps(float new_fps) {
     fps = new_fps;
 }
 
-float EgoActor::get_fps() const {
-    return fps;
-}
-
-void EgoActor::play() {
-    is_playing = true;
-}
-
-void EgoActor::pause() {
-    is_playing = false;
-}
-
 void EgoActor::stop() {
     is_playing = false;
     current_frame = 0;
@@ -227,6 +225,13 @@ void EgoActor::stop() {
     }
 }
 
-bool EgoActor::is_playing_animation() const {
-    return is_playing;
+float EgoActor::sample_terrain_height(float x, float y) {
+    // For now, return a simple height function
+    // This will be enhanced to sample the actual terrain mesh
+    if (terrain_mesh) {
+        // TODO: Implement actual terrain sampling
+        // For now, return a simple height
+        return 0.0f;
+    }
+    return 0.0f;
 } 
