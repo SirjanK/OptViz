@@ -40,6 +40,7 @@ public:
     int get_grid_width() const { return grid_width; }
     int get_grid_height() const { return grid_height; }
     float get_height_at(float x, float y) const;
+    Color get_height_color(float height, float min_height, float height_range) const;
 };
 
 }

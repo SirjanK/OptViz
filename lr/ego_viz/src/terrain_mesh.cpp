@@ -147,6 +147,13 @@ void TerrainMesh::generate_mesh() {
     Ref<SurfaceTool> surface_tool = memnew(SurfaceTool);
     surface_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
     
+    // Calculate height range for color mapping
+    float min_height = min_bounds.z;
+    float max_height = max_bounds.z;
+    float height_range = max_height - min_height;
+    
+    UtilityFunctions::print("Height range: " + String::num(min_height) + " to " + String::num(max_height));
+    
     // Generate triangles for each grid cell
     for (int x = 0; x < grid_width - 1; x++) {
         for (int y = 0; y < grid_height - 1; y++) {
@@ -158,31 +165,45 @@ void TerrainMesh::generate_mesh() {
             Vector3 p3 = row2[y];           // Point below
             Vector3 p4 = row2[y + 1];       // Point below and to the right
             
+            // Calculate colors based on height
+            Color c1 = get_height_color(p1.z, min_height, height_range);
+            Color c2 = get_height_color(p2.z, min_height, height_range);
+            Color c3 = get_height_color(p3.z, min_height, height_range);
+            Color c4 = get_height_color(p4.z, min_height, height_range);
+            
             // Create two triangles for this grid cell
             // Triangle 1: p1, p2, p3
             surface_tool->add_vertex(p1);
+            surface_tool->set_color(c1);
             surface_tool->add_vertex(p2);
+            surface_tool->set_color(c2);
             surface_tool->add_vertex(p3);
+            surface_tool->set_color(c3);
             
             // Triangle 2: p2, p4, p3
             surface_tool->add_vertex(p2);
+            surface_tool->set_color(c2);
             surface_tool->add_vertex(p4);
+            surface_tool->set_color(c4);
             surface_tool->add_vertex(p3);
+            surface_tool->set_color(c3);
         }
     }
     
     Ref<ArrayMesh> terrain_mesh = surface_tool->commit();
     
-    // Create material
+    // Create material with vertex colors enabled
     Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
-    material->set_albedo(Color(0.4, 0.3, 0.2, 1.0)); // Brown/earth color
-    material->set_roughness(0.9);
+    material->set_albedo(Color(1.0, 1.0, 1.0, 1.0)); // White base color
+    material->set_roughness(0.8);
+    // Note: Vertex colors should work automatically with white base color
     
     // Set the mesh and material
     set_mesh(terrain_mesh);
     set_material_override(material);
     
     UtilityFunctions::print("Terrain mesh generated with " + String::num_int64((grid_width - 1) * (grid_height - 1) * 2) + " triangles");
+    UtilityFunctions::print("Height-based coloring applied: blue(low) -> green(medium) -> brown(high) -> white(peaks)");
 }
 
 void TerrainMesh::set_material_color(const Color& color) {
@@ -255,4 +276,36 @@ float TerrainMesh::get_height_at(float x, float y) const {
     float z1 = z01 * (1 - tx) + z11 * tx;
     float z = z0 * (1 - ty) + z1 * ty;
     return z;
+}
+
+Color TerrainMesh::get_height_color(float height, float min_height, float height_range) const {
+    if (height_range <= 0.0f) {
+        return Color(0.5, 0.5, 0.5, 1.0); // Gray if no height variation
+    }
+    
+    // Normalize height to 0-1 range
+    float normalized_height = (height - min_height) / height_range;
+    normalized_height = Math::clamp(normalized_height, 0.0f, 1.0f);
+    
+    // Create a color gradient: blue -> green -> brown -> white
+    Color color;
+    if (normalized_height < 0.25f) {
+        // Blue to green (water to grass)
+        float t = normalized_height / 0.25f;
+        color = Color(0.0, 0.2 + 0.6 * t, 0.8 - 0.4 * t, 1.0);
+    } else if (normalized_height < 0.6f) {
+        // Green to brown (grass to earth)
+        float t = (normalized_height - 0.25f) / 0.35f;
+        color = Color(0.2 + 0.4 * t, 0.8 - 0.3 * t, 0.4 - 0.2 * t, 1.0);
+    } else if (normalized_height < 0.85f) {
+        // Brown to light brown (earth to rock)
+        float t = (normalized_height - 0.6f) / 0.25f;
+        color = Color(0.6 + 0.2 * t, 0.5 - 0.1 * t, 0.2 + 0.1 * t, 1.0);
+    } else {
+        // Light brown to white (rock to snow)
+        float t = (normalized_height - 0.85f) / 0.15f;
+        color = Color(0.8 + 0.2 * t, 0.4 + 0.6 * t, 0.3 + 0.7 * t, 1.0);
+    }
+    
+    return color;
 } 
