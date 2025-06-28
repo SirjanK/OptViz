@@ -16,8 +16,15 @@ class TerrainMesh : public MeshInstance3D {
     GDCLASS(TerrainMesh, MeshInstance3D)
 
 private:
-    // all points of the terrain mesh (x, y, z)
-    Array terrain_points;
+    // terrain metadata from JSON
+    float min_x;     // minimum x coordinate
+    float min_y;     // minimum y coordinate
+    int grid_width;  // width of terrain grid
+    int grid_height; // height of terrain grid
+    float delta;     // spacing between grid points
+
+    // heightmap grid
+    Array heightmap;  // 2D grid of heights
 
 protected:
     static void _bind_methods();
@@ -29,9 +36,7 @@ public:
     void _ready() override;
     
     // Load terrain data from the CSV file and store in terrain_points
-    void load_terrain_data(const String& csv_path);
-    // Load terrain data from binary file
-    void load_terrain_binary(const String& bin_path);
+    void load_terrain_data(const String& metadata_json_path, const String& binary_z_path);
     // Generate the mesh from the terrain data
     void generate_mesh();
     // Set the material color of the terrain mesh

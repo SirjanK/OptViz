@@ -23,8 +23,28 @@ transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 
 transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 15, 20)
 
 [node name="TerrainMesh" type="TerrainMesh" parent="."]
+_import_path = NodePath("")
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
 material_override = SubResource("StandardMaterial3D_7dm0k")
 mesh = SubResource("ArrayMesh_ig7tw")
+script = null
 
 [node name="EgoActor" type="EgoActor" parent="."]
+_import_path = NodePath("")
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
 transform = Transform3D(0.999991, 0.000551248, 0.00430356, -2.91038e-11, -0.991896, 0.127053, 0.00433873, -0.127052, -0.991886, -0.644875, -0.0814666, -2.91268)
+script = null
