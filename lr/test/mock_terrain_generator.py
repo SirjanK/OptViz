@@ -17,7 +17,7 @@ X_MIN = -5
 X_MAX = 5
 Y_MIN = -5
 Y_MAX = 5
-DELTA = 0.05
+DELTA = 0.2
 
 # sinusoidal terrain parameters
 AMPLITUDE = 5

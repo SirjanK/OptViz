@@ -30,7 +30,7 @@ void EgoActor::_bind_methods() {
 EgoActor::EgoActor() {
     UtilityFunctions::print("EgoActor constructor called!");
     current_frame = 0;
-    camera_offset = Vector3(0, 0.5, 0.7);
+    camera_offset = Vector3(0, 2.0, 3.0);  // 2 units above, 3 units behind - better view of terrain
     fps = 1.0f;  // 1 FPS default
     time_since_last_frame = 0.0f;
     is_playing = true;  // Start playing automatically
@@ -48,10 +48,10 @@ void EgoActor::_ready() {
     Ref<SurfaceTool> surface_tool = memnew(SurfaceTool);
     surface_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
     
-    // Define triangle vertices (pointing forward) - make it larger
+    // Define triangle vertices (pointing forward)
     surface_tool->add_vertex(Vector3(-1, 0, -1));  // Back left
     surface_tool->add_vertex(Vector3(1, 0, -1));   // Back right
-    surface_tool->add_vertex(Vector3(0, 0, 1));    // Front center (point)
+    surface_tool->add_vertex(Vector3(0, 0, 1));    // Front center
     
     Ref<ArrayMesh> triangle_mesh = surface_tool->commit();
 
@@ -161,9 +161,9 @@ void EgoActor::set_frame(int frame) {
     current_frame = frame;
     // Update position
     Array frame_data = trajectory_data[frame];
-    float x = frame_data[1];
-    float y = frame_data[2];
-    float z = terrain_mesh->get_height_at(x, y);
+    float x = frame_data[1];  // trajectory x -> world x
+    float z = frame_data[2];  // trajectory y -> world z (forward/backward)
+    float y = terrain_mesh->get_height_at(x, z);  // terrain height -> world y (up/down)
     Vector3 position(x, y, z);
     set_position(position);
 
@@ -171,8 +171,8 @@ void EgoActor::set_frame(int frame) {
     Vector3 direction = Vector3(0, 0, 1); // Default forward direction
     if (frame < trajectory_data.size() - 1) {
         Array next_frame_data = trajectory_data[frame + 1];
-        float next_z = terrain_mesh->get_height_at(next_frame_data[1], next_frame_data[2]);
-        direction = (Vector3(next_frame_data[1], next_frame_data[2], next_z) - position).normalized();
+        float next_y = terrain_mesh->get_height_at(next_frame_data[1], next_frame_data[2]);
+        direction = (Vector3(next_frame_data[1], next_y, next_frame_data[2]) - position).normalized();
     } else if (frame > 0) {
         Array prev_frame_data = trajectory_data[frame - 1];
         float prev_z = terrain_mesh ? terrain_mesh->get_height_at(prev_frame_data[1], prev_frame_data[2]) : (float)prev_frame_data[3];
@@ -191,9 +191,8 @@ void EgoActor::set_frame(int frame) {
     // Update camera position to follow behind and above
     Camera3D* camera = Object::cast_to<Camera3D>(get_node_or_null("FollowCamera"));
     if (camera) {
-        // Camera offset is in local space; transform it by EgoActor's rotation
-        Vector3 cam_offset = -camera_offset; // Behind and above
-        Vector3 cam_world_offset = get_global_transform().basis.xform(cam_offset);
+        // Transform camera offset by actor's rotation to follow properly
+        Vector3 cam_world_offset = get_global_transform().basis.xform(camera_offset);
         Vector3 camera_pos = get_global_position() + cam_world_offset;
         camera->set_global_position(camera_pos);
         camera->look_at(get_global_position(), Vector3(0, 1, 0));

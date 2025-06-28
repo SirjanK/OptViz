@@ -17,10 +17,10 @@ class TerrainMesh : public MeshInstance3D {
 
 private:
     // terrain metadata from JSON
-    float min_x;     // minimum x coordinate
-    float min_y;     // minimum y coordinate
+    float min_x;     // minimum x coordinate (left/right)
+    float min_z;     // minimum z coordinate (forward/backward) - from Python y
     int grid_width;  // width of terrain grid
-    int grid_height; // height of terrain grid
+    int grid_height; // height of terrain grid (actually z dimension)
     float delta;     // spacing between grid points
 
     // heightmap grid

@@ -20,7 +20,7 @@ void TerrainMesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("load_terrain_data", "metadata_json_path", "binary_z_path"), &TerrainMesh::load_terrain_data);
     ClassDB::bind_method(D_METHOD("generate_mesh"), &TerrainMesh::generate_mesh);
     ClassDB::bind_method(D_METHOD("set_material_color", "color"), &TerrainMesh::set_material_color);
-    ClassDB::bind_method(D_METHOD("get_height_at", "x", "y"), &TerrainMesh::get_height_at);
+    ClassDB::bind_method(D_METHOD("get_height_at", "x", "z"), &TerrainMesh::get_height_at);
 }
 
 TerrainMesh::TerrainMesh() {
@@ -28,7 +28,7 @@ TerrainMesh::TerrainMesh() {
     grid_width = 0;
     grid_height = 0;
     min_x = 0.0f;
-    min_y = 0.0f;
+    min_z = 0.0f;
     delta = 0.0f;
 }
 
@@ -70,14 +70,14 @@ void TerrainMesh::load_terrain_data(const String& metadata_json_path, const Stri
     // Extract metadata into instance variables with proper type conversion
     min_x = (float)metadata["x_min"];
     grid_width = (int)metadata["width"];
-    min_y = (float)metadata["y_min"];
+    min_z = (float)metadata["y_min"];  // Python y -> Godot z
     grid_height = (int)metadata["height"];
     delta = (float)metadata["delta"];
     
     UtilityFunctions::print("Parsed terrain metadata:");
     UtilityFunctions::print("  x_min: " + String::num(min_x));
     UtilityFunctions::print("  width: " + String::num_int64(grid_width));
-    UtilityFunctions::print("  y_min: " + String::num(min_y));
+    UtilityFunctions::print("  y_min: " + String::num(min_z));
     UtilityFunctions::print("  height: " + String::num_int64(grid_height));
     UtilityFunctions::print("  delta: " + String::num(delta));
 
@@ -85,10 +85,10 @@ void TerrainMesh::load_terrain_data(const String& metadata_json_path, const Stri
     heightmap.clear();
     heightmap.resize(grid_height);
     
-    for (int y = 0; y < grid_height; y++) {
+    for (int z = 0; z < grid_height; z++) {
         Array row;
         row.resize(grid_width);
-        heightmap[y] = row;
+        heightmap[z] = row;
     }
     
     // Load binary height data
@@ -99,13 +99,13 @@ void TerrainMesh::load_terrain_data(const String& metadata_json_path, const Stri
     }
     
     // Read height values as float32
-    for (int y = 0; y < grid_height; y++) {
-        Array row = heightmap[y];
+    for (int z = 0; z < grid_height; z++) {
+        Array row = heightmap[z];
         for (int x = 0; x < grid_width; x++) {
             float height = bin_file->get_float();
             row[x] = height;
         }
-        heightmap[y] = row;
+        heightmap[z] = row;
     }
     
     bin_file->close();
@@ -126,8 +126,8 @@ void TerrainMesh::generate_mesh() {
     float min_height = FLT_MAX;
     float max_height = -FLT_MAX;
     
-    for (int y = 0; y < grid_height; y++) {
-        Array row = heightmap[y];
+    for (int z = 0; z < grid_height; z++) {
+        Array row = heightmap[z];
         for (int x = 0; x < grid_width; x++) {
             float height = row[x];
             if (height < min_height) min_height = height;
@@ -139,34 +139,34 @@ void TerrainMesh::generate_mesh() {
     UtilityFunctions::print("Height range: " + String::num(min_height) + " to " + String::num(max_height));
     
     // Generate triangles for each grid cell
-    for (int y = 0; y < grid_height - 1; y++) {
-        Array row1 = heightmap[y];
-        Array row2 = heightmap[y + 1];
+    for (int z = 0; z < grid_height - 1; z++) {
+        Array row1 = heightmap[z];
+        Array row2 = heightmap[z + 1];
         
         for (int x = 0; x < grid_width - 1; x++) {
             // Calculate world coordinates
             float x1 = min_x + x * delta;
             float x2 = min_x + (x + 1) * delta;
-            float y1 = min_y + y * delta;
-            float y2 = min_y + (y + 1) * delta;
+            float z1 = min_z + z * delta;  // Python y -> Godot z
+            float z2 = min_z + (z + 1) * delta;
             
-            // Get heights at the four corners
-            float z1 = row1[x];      // bottom-left
-            float z2 = row1[x + 1];  // bottom-right
-            float z3 = row2[x];      // top-left
-            float z4 = row2[x + 1];  // top-right
+            // Get heights at the four corners (Python z -> Godot y)
+            float y1 = row1[x];      // height at bottom-left
+            float y2 = row1[x + 1];  // height at bottom-right
+            float y3 = row2[x];      // height at top-left
+            float y4 = row2[x + 1];  // height at top-right
             
-            // Create vertices
+            // Create vertices (x, y, z) where y is height
             Vector3 p1(x1, y1, z1);
-            Vector3 p2(x2, y1, z2);
-            Vector3 p3(x1, y2, z3);
-            Vector3 p4(x2, y2, z4);
+            Vector3 p2(x2, y2, z1);
+            Vector3 p3(x1, y3, z2);
+            Vector3 p4(x2, y4, z2);
             
             // Calculate colors based on height
-            Color c1 = get_height_color(z1, min_height, height_range);
-            Color c2 = get_height_color(z2, min_height, height_range);
-            Color c3 = get_height_color(z3, min_height, height_range);
-            Color c4 = get_height_color(z4, min_height, height_range);
+            Color c1 = get_height_color(y1, min_height, height_range);
+            Color c2 = get_height_color(y2, min_height, height_range);
+            Color c3 = get_height_color(y3, min_height, height_range);
+            Color c4 = get_height_color(y4, min_height, height_range);
             
             // Create two triangles for this grid cell
             // Triangle 1: p1, p2, p3
@@ -209,18 +209,18 @@ void TerrainMesh::set_material_color(const Color& color) {
     }
 }
 
-float TerrainMesh::get_height_at(float x, float y) const {
+float TerrainMesh::get_height_at(float x, float z) const {
     if (grid_width < 2 || grid_height < 2) return 0.0f;
 
     // Convert world coordinates to grid coordinates
     int grid_x = (int)((x - min_x) / delta);
-    int grid_y = (int)((y - min_y) / delta);
+    int grid_z = (int)((z - min_z) / delta);  // z coordinate maps to grid y
 
     // Clamp to grid bounds
     grid_x = Math::clamp(grid_x, 0, grid_width - 1);
-    grid_y = Math::clamp(grid_y, 0, grid_height - 1);
+    grid_z = Math::clamp(grid_z, 0, grid_height - 1);
 
-    Array row = heightmap[grid_y];
+    Array row = heightmap[grid_z];
     return row[grid_x];
 }
 
