@@ -4,28 +4,32 @@
 # grid min and max bounds and delta.
 #  2. mock_terrain.bin: binary file containing the z values of the terrain grid
 #  3. mock_trajectory.csv: contains the trajectory of the ego actor
-# move all these to lr/ego_viz/godot/assets/
 
 
 import numpy as np
 import json
 import pandas as pd
 from typing import Tuple, Dict, Any
+import os
 
 # grid parameters
-X_MIN = -5
-X_MAX = 5
-Y_MIN = -5
-Y_MAX = 5
-DELTA = 0.05
+X_MIN = -50
+X_MAX = 50
+Y_MIN = -50
+Y_MAX = 50
+DELTA = 0.5
 
 # sinusoidal terrain parameters
-AMPLITUDE = 5
-OSCILLATION_RADIUS = 1
+AMPLITUDE = 40
+OSCILLATION_RADIUS = 10
 
 # trajectory parameters
 NUM_SPIRALS = 4
 MAX_TIME = 100
+
+
+# Directory params
+ASSETS_DIR = "lr/ego_viz/godot/assets"
 
 
 def generate_mock_terrain(x_min: float, x_max: float, y_min: float, y_max: float, delta: float) -> Tuple[Dict[str, Any], np.ndarray]:
@@ -102,8 +106,16 @@ def main():
         y_max=Y_MAX, 
         delta=DELTA,
     )
-    save_terrain_binary(terrain_z, filename="mock_terrain.bin")
-    with open("mock_terrain_metadata.json", "w") as f:
+    # Delete any existing files in assets directory
+    if os.path.exists(ASSETS_DIR):
+        for f in os.listdir(ASSETS_DIR):
+            os.remove(os.path.join(ASSETS_DIR, f))
+    else:
+        os.makedirs(ASSETS_DIR)
+
+    # Save files to assets directory
+    save_terrain_binary(terrain_z, filename=os.path.join(ASSETS_DIR, "mock_terrain.bin"))
+    with open(os.path.join(ASSETS_DIR, "mock_terrain_metadata.json"), "w") as f:
         json.dump(terrain_metadata, f)
 
     max_radius = min(abs(X_MIN), abs(X_MAX), abs(Y_MIN), abs(Y_MAX))
@@ -114,7 +126,7 @@ def main():
     )
     # save trajectory["t"] as integer, trajectory["x"] and trajectory["y"] as float
     trajectory["t"] = trajectory["t"].astype(np.int32)
-    trajectory.to_csv("mock_trajectory.csv", index=False, header=True)
+    trajectory.to_csv(os.path.join(ASSETS_DIR, "mock_trajectory.csv"), index=False, header=True)
 
 
 if __name__ == "__main__":

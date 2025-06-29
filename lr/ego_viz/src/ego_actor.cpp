@@ -163,7 +163,8 @@ void EgoActor::set_frame(int frame) {
     Array frame_data = trajectory_data[frame];
     float x = frame_data[1];  // trajectory x -> world x
     float z = frame_data[2];  // trajectory y -> world z (forward/backward)
-    float y = terrain_mesh->get_height_at(x, z);  // terrain height -> world y (up/down)
+    // float y = terrain_mesh->get_height_at(x, z);  // terrain height -> world y (up/down)
+    float y = 10.0f;
     Vector3 position(x, y, z);
     set_position(position);
 
@@ -171,12 +172,14 @@ void EgoActor::set_frame(int frame) {
     Vector3 direction = Vector3(0, 0, 1); // Default forward direction
     if (frame < trajectory_data.size() - 1) {
         Array next_frame_data = trajectory_data[frame + 1];
-        float next_y = terrain_mesh->get_height_at(next_frame_data[1], next_frame_data[2]);
+        //float next_y = terrain_mesh->get_height_at(next_frame_data[1], next_frame_data[2]);
+        float next_y = 10.0f;
         direction = (Vector3(next_frame_data[1], next_y, next_frame_data[2]) - position).normalized();
     } else if (frame > 0) {
         Array prev_frame_data = trajectory_data[frame - 1];
-        float prev_z = terrain_mesh ? terrain_mesh->get_height_at(prev_frame_data[1], prev_frame_data[2]) : (float)prev_frame_data[3];
-        direction = (position - Vector3(prev_frame_data[1], prev_frame_data[2], prev_z)).normalized();
+        // float prev_y = terrain_mesh->get_height_at(prev_frame_data[1], prev_frame_data[2]);
+        float prev_y = 10.0f;
+        direction = (position - Vector3(prev_frame_data[1], prev_y, prev_frame_data[2])).normalized();
     }
     // Calculate rotation to face the direction
     if (direction.length() > 0.001) {
