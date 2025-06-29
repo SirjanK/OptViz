@@ -30,7 +30,7 @@ void EgoActor::_bind_methods() {
 EgoActor::EgoActor() {
     UtilityFunctions::print("EgoActor constructor called!");
     current_frame = 0;
-    camera_offset = Vector3(0, 2.0, 3.0);  // 2 units above, 3 units behind - better view of terrain
+    camera_offset = Vector3(0, 8.0, 5.0);  // 8 units above, 5 units behind for angled view
     fps = 1.0f;  // 1 FPS default
     time_since_last_frame = 0.0f;
     is_playing = true;  // Start playing automatically
@@ -58,13 +58,15 @@ void EgoActor::_ready() {
     // Create a material to make it visible
     Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
     material->set_albedo(Color(1.0, 0.0, 0.0, 1.0)); // Bright red color
-    material->set_emission(Color(0.5, 0.0, 0.0, 1.0)); // Add emission to make it glow
-    material->set_emission_energy_multiplier(3.0); // Make emission brighter
+    material->set_roughness(0.3); // Less rough for better visibility
+    material->set_metallic(0.0); // Non-metallic
+    material->set_shading_mode(BaseMaterial3D::SHADING_MODE_UNSHADED); // Unshaded for consistent visibility
 
     // Create the mesh instance
     MeshInstance3D* mesh_instance = memnew(MeshInstance3D);
     mesh_instance->set_mesh(triangle_mesh);
     mesh_instance->set_material_override(material);
+    mesh_instance->set_scale(Vector3(0.3, 0.3, 0.3)); // Make it smaller
 
     // Add it as a child
     add_child(mesh_instance);
@@ -76,6 +78,7 @@ void EgoActor::_ready() {
     camera->set_current(true);  // Make this the active camera
     camera->set_near(0.1);  // Set near plane to avoid clipping
     camera->set_far(1000.0);  // Set far plane
+    camera->set_fov(60.0);  // Set field of view for good top-down perspective
     add_child(camera);
     UtilityFunctions::print("Camera added to EgoActor");
 
@@ -163,8 +166,8 @@ void EgoActor::set_frame(int frame) {
     Array frame_data = trajectory_data[frame];
     float x = frame_data[1];  // trajectory x -> world x
     float z = frame_data[2];  // trajectory y -> world z (forward/backward)
-    // float y = terrain_mesh->get_height_at(x, z);  // terrain height -> world y (up/down)
-    float y = 10.0f;
+    float terrain_height = terrain_mesh->get_height_at(x, z);  // terrain height -> world y (up/down)
+    float y = terrain_height + 0.05f;  // Position slightly above terrain surface (same as delta)
     Vector3 position(x, y, z);
     set_position(position);
 
@@ -172,13 +175,13 @@ void EgoActor::set_frame(int frame) {
     Vector3 direction = Vector3(0, 0, 1); // Default forward direction
     if (frame < trajectory_data.size() - 1) {
         Array next_frame_data = trajectory_data[frame + 1];
-        //float next_y = terrain_mesh->get_height_at(next_frame_data[1], next_frame_data[2]);
-        float next_y = 10.0f;
+        float next_terrain_height = terrain_mesh->get_height_at(next_frame_data[1], next_frame_data[2]);
+        float next_y = next_terrain_height + 0.05f;  // Keep consistent offset
         direction = (Vector3(next_frame_data[1], next_y, next_frame_data[2]) - position).normalized();
     } else if (frame > 0) {
         Array prev_frame_data = trajectory_data[frame - 1];
-        // float prev_y = terrain_mesh->get_height_at(prev_frame_data[1], prev_frame_data[2]);
-        float prev_y = 10.0f;
+        float prev_terrain_height = terrain_mesh->get_height_at(prev_frame_data[1], prev_frame_data[2]);
+        float prev_y = prev_terrain_height + 0.05f;  // Keep consistent offset
         direction = (position - Vector3(prev_frame_data[1], prev_y, prev_frame_data[2])).normalized();
     }
     // Calculate rotation to face the direction
@@ -198,6 +201,8 @@ void EgoActor::set_frame(int frame) {
         Vector3 cam_world_offset = get_global_transform().basis.xform(camera_offset);
         Vector3 camera_pos = get_global_position() + cam_world_offset;
         camera->set_global_position(camera_pos);
+        
+        // Look at the actor from behind and above
         camera->look_at(get_global_position(), Vector3(0, 1, 0));
     }
     

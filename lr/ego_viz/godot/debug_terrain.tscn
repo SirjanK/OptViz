@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3 uid="uid://bqxvhxqxqxqxq"]
+
+[ext_resource type="Script" path="res://debug_terrain.gd" id="1_0xqxq"]
+
+[node name="DebugTerrain" type="Node3D"]
+script = ExtResource("1_0xqxq")
+
+[node name="TerrainMesh" type="Node3D" parent="."]
+
+[node name="FixedCamera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 15, 15)
+fov = 60.0
+near = 0.1
+far = 1000.0
+current = true 
